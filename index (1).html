@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ウエンと一緒にゲームをしよう</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4fbf4;
+    --surface: #ffffff;
+    --surface2: #e8f7e7;
+    --border: #c0e0be;
+    --accent: #3a8a36;
+    --accent2: #68c264;
+    --accent3: #C6EDC3;
+    --text: #1a3319;
+    --text2: #5a7a58;
+    --correct: #2d8a29;
+    --wrong: #d94f4f;
+    --warn: #c28a10;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(58,138,54,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(58,138,54,0.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-1 { width: 400px; height: 400px; background: rgba(198,237,195,0.5); top: -100px; right: -100px; }
+  .glow-2 { width: 300px; height: 300px; background: rgba(104,194,100,0.2); bottom: -50px; left: -50px; }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── INTRO SCREEN ── */
+  .intro-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(198,237,195,0.6);
+    border: 1px solid rgba(58,138,54,0.25);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #3a8a36;
+    letter-spacing: 0.1em;
+    margin-bottom: 32px;
+  }
+  .intro-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+  .intro-title {
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+  .intro-title .line1 { display: block; color: var(--text); }
+  .intro-title .line2 {
+    display: block;
+    background: linear-gradient(135deg, var(--accent), #52b84e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .intro-desc {
+    font-size: 15px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 40px;
+    max-width: 480px;
+  }
+
+  .grammar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .grammar-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .grammar-chip .jp { font-weight: 700; color: var(--accent); font-size: 15px; display: block; margin-bottom: 4px; }
+  .grammar-chip .vn { color: var(--text2); font-size: 11px; }
+
+  .name-section { margin-bottom: 32px; }
+  .name-section label { display: block; font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 10px; }
+  .name-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 16px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .name-input:focus { border-color: var(--accent); }
+  .name-input::placeholder { color: var(--text2); }
+
+  .start-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #2d6e2a);
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: transform 0.15s, box-shadow 0.15s;
+    font-family: 'Noto Sans JP', sans-serif;
+    box-shadow: 0 0 40px rgba(58,138,54,0.2);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(58,138,54,0.35); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ── QUIZ SCREEN ── */
+  .quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .q-counter {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .q-counter strong { color: var(--accent); }
+
+  .timer-ring-wrap {
+    position: relative;
+    width: 52px;
+    height: 52px;
+  }
+  .timer-ring-wrap svg { transform: rotate(-90deg); }
+  .timer-ring-bg { fill: none; stroke: var(--surface2); stroke-width: 4; }
+  .timer-ring-fill { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.3s; }
+  .timer-num-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .progress-track {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 4px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  .q-type-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .q-text {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .q-text .blank {
+    display: inline-block;
+    min-width: 80px;
+    border-bottom: 2px solid var(--accent);
+    text-align: center;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 4px;
+  }
+
+  .opts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:500px) { .opts-grid { grid-template-columns: 1fr; } }
+
+  .opt-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.5;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .opt-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(58,138,54,0.06);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .opt-btn:hover:not(:disabled)::before { opacity: 1; }
+  .opt-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .opt-btn:disabled { cursor: default; }
+  .opt-btn.correct { background: rgba(74,222,128,0.12); border-color: var(--correct); color: var(--correct); }
+  .opt-btn.wrong { background: rgba(248,113,113,0.12); border-color: var(--wrong); color: var(--wrong); }
+  .opt-btn.reveal { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.4); color: rgba(74,222,128,0.8); }
+
+  .opt-key {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    background: var(--surface2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+
+  .feedback-box {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    display: none;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text2);
+  }
+  .feedback-box.show { display: block; }
+  .feedback-box.ok { border-color: var(--correct); }
+  .feedback-box.no { border-color: var(--wrong); }
+  .feedback-box .fb-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+  .feedback-box.ok .fb-title { color: var(--correct); }
+  .feedback-box.no .fb-title { color: var(--wrong); }
+
+  .next-btn {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: all 0.15s;
+    display: none;
+  }
+  .next-btn.show { display: block; }
+  .next-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .next-btn:active { transform: scale(0.98); }
+
+  /* ── RESULT SCREEN ── */
+  .result-wrap { text-align: center; padding-top: 20px; }
+
+  .score-circle {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    margin: 0 auto 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .score-circle svg {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+  }
+  .score-circle-bg { fill: none; stroke: var(--surface2); stroke-width: 8; }
+  .score-circle-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1); }
+  .score-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+  }
+  .score-label {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'Space Mono', monospace;
+    position: relative;
+    z-index: 1;
+  }
+
+  .result-title {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .result-sub {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 36px;
+    line-height: 1.6;
+  }
+
+  .review-list { text-align: left; margin-bottom: 36px; }
+  .review-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    border-left: 3px solid transparent;
+  }
+  .review-item.ok { border-left-color: var(--correct); }
+  .review-item.no { border-left-color: var(--wrong); }
+  .review-q { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .review-a { font-size: 14px; font-weight: 500; }
+  .review-item.ok .review-a { color: var(--correct); }
+  .review-item.no .review-a { color: var(--wrong); }
+  .review-correct { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .review-correct span { color: var(--correct); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-val { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .stat-lbl { font-size: 11px; color: var(--text2); }
+
+  .replay-btn {
+    background: linear-gradient(135deg, var(--accent), #2d6e2a);
+    border: none;
+    border-radius: 14px;
+    padding: 16px 40px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 30px rgba(58,138,54,0.25);
+  }
+  .replay-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(58,138,54,0.4); }
+
+  .share-text {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 16px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.4s ease forwards; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+  }
+  .shake { animation: shake 0.4s ease; }
+
+  @keyframes pop {
+    0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)}
+  }
+  .pop { animation: pop 0.3s ease; }
+</style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="wrap">
+
+  <!-- ── INTRO ── -->
+  <div id="screen-intro" class="screen active">
+    <div class="intro-badge"><span></span> ウエンと一緒にゲームをしよう</div>
+    <h1 class="intro-title">
+      <span class="line1">N2文法の練習</span>
+      <span class="line2">(Quiz)</span>
+    </h1>
+
+    <div class="grammar-grid">
+      <div class="grammar-chip"><span class="jp">〜につき</span><span class="vn">Vì, do...</span></div>
+      <div class="grammar-chip"><span class="jp">〜を問わず</span><span class="vn">Bất kể...</span></div>
+      <div class="grammar-chip"><span class="jp">〜に限り</span><span class="vn">Chỉ, chỉ khi...</span></div>
+      <div class="grammar-chip"><span class="jp">〜に応じて</span><span class="vn">Tùy theo...</span></div>
+      <div class="grammar-chip"><span class="jp">〜にかかわらず</span><span class="vn">Dù... hay không</span></div>
+      <div class="grammar-chip"><span class="jp">〜において</span><span class="vn">Ở, tại, trong...</span></div>
+      <div class="grammar-chip"><span class="jp">〜際（に）</span><span class="vn">Khi, lúc...</span></div>
+      <div class="grammar-chip"><span class="jp">〜こと</span><span class="vn">Hãy / Không được</span></div>
+    </div>
+
+    <div class="name-section">
+      <label>お名前を入力してください <span style="color:var(--text2);font-size:11px;font-weight:400">（Tên của bạn）</span></label>
+      <input class="name-input" id="player-name" type="text" placeholder="例：ウエン、ミン、ハナ..." maxlength="30" />
+    </div>
+
+    <button class="start-btn" onclick="startGame()">始めましょう<br><span style="font-size:13px;font-weight:400;opacity:0.85">Bắt đầu →</span></button>
+  </div>
+
+  <!-- ── QUIZ ── -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <div class="q-counter">Câu <strong id="q-num">1</strong> / 15</div>
+      <div class="timer-ring-wrap">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle class="timer-ring-bg" cx="26" cy="26" r="22"/>
+          <circle class="timer-ring-fill" id="timer-ring" cx="26" cy="26" r="22" stroke-dasharray="138.2" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-num-center" id="timer-num">20</div>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+    <div class="q-type-label" id="q-type"></div>
+    <div class="q-card">
+      <div class="q-text" id="q-text"></div>
+    </div>
+
+    <div class="opts-grid" id="opts-grid"></div>
+    <div class="feedback-box" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQ()">Câu tiếp theo →</button>
+  </div>
+
+  <!-- ── RESULT ── -->
+  <div id="screen-result" class="screen">
+    <div class="result-wrap">
+      <div class="score-circle">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle class="score-circle-bg" cx="80" cy="80" r="68"/>
+          <circle class="score-circle-fill" id="score-arc" cx="80" cy="80" r="68" stroke-dasharray="427.3" stroke-dashoffset="427.3"/>
+        </svg>
+        <div class="score-num" id="score-num">0</div>
+        <div class="score-label">điểm</div>
+      </div>
+
+      <div class="result-title" id="result-title"></div>
+      <div class="result-sub" id="result-sub"></div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-correct" style="color:var(--correct)">0</div>
+          <div class="stat-lbl">Đúng</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-wrong" style="color:var(--wrong)">0</div>
+          <div class="stat-lbl">Sai</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-time" style="color:var(--warn)">0s</div>
+          <div class="stat-lbl">Thời gian</div>
+        </div>
+      </div>
+
+      <div class="review-list" id="review-list"></div>
+
+      <button class="replay-btn" onclick="replayGame()">もう一度 — Chơi lại</button>
+      <div class="share-text" id="share-text"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  {type:'CHỌN NGHĨA', q:'「〜につき」có nghĩa gần nhất với mẫu câu nào?', opts:['〜ながら (trong khi)','〜ため・〜ので (vì, do)','〜けれど (mặc dù)','〜ように (để, hãy)'], ans:1, ex:'〜につき = 〜ため／〜ので. Đây là cách diễn đạt lý do trang trọng, thường thấy trên biển báo và thông báo.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'工事中___、立ち入り禁止です。', blank:true, opts:['において','を問わず','につき','に限り'], ans:2, ex:'Đúng rồi! 工事中につき = do đang thi công → cấm vào. 〜につき dùng để giải thích lý do trong thông báo ngắn gọn, trang trọng.'},
+  {type:'CHỌN NGHĨA', q:'「年齢を問わず、応募できます」nghĩa là gì?', opts:['Chỉ người trẻ mới được đăng ký','Bất kể tuổi tác, đều có thể đăng ký','Phải hỏi về tuổi trước khi đăng ký','Không được đăng ký'], ans:1, ex:'〜を問わず = không phân biệt, bất kể. 年齢を問わず = bất kể tuổi tác. Hay dùng trong quảng cáo tuyển dụng với 年齢・性別・経験・国籍.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'国籍___、ご利用いただけます。', blank:true, opts:['に限り','において','につき','を問わず'], ans:3, ex:'を問わず → không phân biệt quốc tịch, đều có thể sử dụng. Đây là cách diễn đạt trang trọng trong thông báo dịch vụ.'},
+  {type:'CHỌN NGHĨA', q:'「本日に限り、入場無料です」có nghĩa là?', opts:['Mọi ngày đều miễn phí vào cửa','Không bao giờ miễn phí vào cửa','Chỉ hôm nay mới miễn phí vào cửa','Chỉ hội viên mới được miễn phí'], ans:2, ex:'〜に限り = chỉ, chỉ trong trường hợp này. Nhấn mạnh sự đặc biệt, giới hạn. Hay xuất hiện trong campaign khuyến mãi.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'会員様___、ご利用いただけます。(Chỉ hội viên mới được sử dụng)', blank:true, opts:['を問わず','においては','に限り','に応じて'], ans:2, ex:'に限り = chỉ, giới hạn cho đối tượng cụ thể. に限り thường đi với 名詞 và mang nghĩa "chỉ đối tượng này mới được hưởng đặc quyền".'},
+  {type:'PHÂN BIỆT MẪU', q:'Câu nào dùng「に応じて」ĐÚNG nhất về nghĩa?', opts:['経験に応じて、給料が決まります。','本日に応じて、休業します。','国籍に応じて、応募できます。','満席に応じて、禁止です。'], ans:0, ex:'に応じて = tùy theo, phù hợp với. Điểm then chốt: nội dung phía sau phải THAY ĐỔI theo điều kiện phía trước. 経験 (kinh nghiệm) → 給料 (lương) thay đổi → đúng!'},
+  {type:'CHỌN NGHĨA', q:'「ご希望に応じて、勤務時間を調整します」nghĩa là?', opts:['Giờ làm cố định, không đổi được','Giờ làm sẽ điều chỉnh tùy theo mong muốn của bạn','Bất kể mong muốn, giờ làm vẫn vậy','Chỉ người có kinh nghiệm mới được điều chỉnh giờ làm'], ans:1, ex:'に応じて = tùy theo. Ở đây: giờ làm việc (勤務時間) sẽ thay đổi theo mong muốn (希望) của ứng viên. Có sự BIẾN ĐỔI — đó là dấu hiệu của に応じて.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'経験の有無___、応募できます。(Dù có hay không có kinh nghiệm, đều đăng ký được)', blank:true, opts:['に応じて','において','に限り','にかかわらず'], ans:3, ex:'にかかわらず = không liên quan đến, bất kể. 経験の有無にかかわらず = dù có hay không có kinh nghiệm. にかかわらず có thể đi với 名詞 và cả 普通形 (V/A thông thường).'},
+  {type:'PHÂN BIỆT MẪU', q:'Điểm khác nhau chính giữa「にかかわらず」và「を問わず」là?', opts:['Hoàn toàn giống nhau, dùng thay thế được tự do','にかかわらず dùng rộng hơn; を問わず đặc trưng trong quảng cáo tuyển dụng','を問わず dùng rộng hơn, にかかわらず chỉ dùng trong hội thoại','にかかわらず chỉ đi với danh từ, を問わず chỉ đi với động từ'], ans:1, ex:'にかかわらず: dùng rộng trong nhiều văn cảnh (thời tiết, kết quả...). を問わず: đặc trưng trong thông báo tuyển dụng với các yếu tố như 年齢・性別・経験・国籍.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'会議は大会議室___行われます。(Cuộc họp được tổ chức tại phòng họp lớn)', blank:true, opts:['につき','において','に限り','を問わず'], ans:1, ex:'において = ở, tại, trong (địa điểm). Đây là cách nói trang trọng hơn「で」, thường xuất hiện trong báo cáo, thông báo chính thức.'},
+  {type:'CHỌN NGHĨA', q:'「接客業において、笑顔はとても大切です」，「において」ở đây có nghĩa gì?', opts:['Vì ngành dịch vụ','Chỉ trong ngành dịch vụ','Trong lĩnh vực ngành dịch vụ','Dù trong ngành dịch vụ'], ans:2, ex:'において ở đây chỉ phạm vi / lĩnh vực: "Trong lĩnh vực ngành dịch vụ". において dùng cho cả địa điểm lẫn lĩnh vực, và trang trọng hơn「で」rất nhiều.'},
+  {type:'ĐIỀN VÀO CHỖ TRỐNG', q:'お申し込みの___は、身分証明書が必要です。(Khi đăng ký, cần giấy tờ tùy thân)', blank:true, opts:['こと','において','際','につき'], ans:2, ex:'際（に）= khi, lúc. お申し込みの際 = khi đăng ký. 際 trang trọng hơn「とき」và thường gặp trong hướng dẫn thủ tục, thông báo chính thức.'},
+  {type:'PHÂN BIỆT MẪU', q:'Câu nào dùng「〜こと」với nghĩa quy tắc/chỉ thị ĐÚNG nhất?', opts:['勉強することが楽しい。(Việc học thật thú vị)','教室では静かにすること。(Hãy giữ yên lặng trong lớp)','彼女は医者であることを知っています。(Tôi biết cô ấy là bác sĩ)','走ることが得意です。(Tôi giỏi chạy)'], ans:1, ex:'〜こと (quy tắc) = hãy làm / không được làm. Câu B là chỉ thị/nội quy: "Hãy giữ yên lặng trong lớp". 〜ないこと = không được làm. Hay xuất hiện trong nội quy trường học, công ty.'},
+  {type:'TỔNG HỢP', q:'「施設内では走らないこと」nghĩa là gì và thuộc mẫu nào?', opts:['Mẫu に応じて — Tùy theo trong cơ sở, không chạy','Mẫu 〜こと — Không được chạy trong khuôn viên cơ sở','Mẫu において — Trong cơ sở, có người đang chạy','Mẫu に限り — Chỉ trong cơ sở mới không được chạy'], ans:1, ex:'走らないこと = V-ない + こと → quy tắc cấm. Nghĩa: "Không được chạy trong khuôn viên cơ sở". Đây là 〜こと dùng để ra lệnh/cấm, thường thấy trên biển nội quy.'}
+];
+
+let currentQ = 0;
+let score = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let timer = null;
+let timeLeft = 7;
+let totalTime = 0;
+let startTime = 0;
+let answered = false;
+let playerName = '';
+let reviewData = [];
+const CIRC = 138.2;
+const SCORE_CIRC = 427.3;
+
+function startGame() {
+  const nameVal = document.getElementById('player-name').value.trim();
+  if (!nameVal) {
+    const input = document.getElementById('player-name');
+    input.style.borderColor = '#d94f4f';
+    input.placeholder = '⚠ お名前を入力してください！';
+    input.focus();
+    setTimeout(() => { input.style.borderColor = ''; input.placeholder = '例：Uyên、Minh、Hana...'; }, 2500);
+    return;
+  }
+  playerName = nameVal;
+  currentQ = 0; score = 0; correctCount = 0; wrongCount = 0;
+  totalTime = 0; reviewData = [];
+  showScreen('screen-quiz');
+  loadQ();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function loadQ() {
+  answered = false;
+  timeLeft = 7;
+  const q = QUESTIONS[currentQ];
+
+  document.getElementById('q-num').textContent = currentQ + 1;
+  document.getElementById('progress-fill').style.width = (currentQ / QUESTIONS.length * 100) + '%';
+  document.getElementById('q-type').textContent = q.type;
+
+  const qTextEl = document.getElementById('q-text');
+  if (q.blank) {
+    qTextEl.innerHTML = q.q.replace('___', '<span class="blank">___</span>');
+  } else {
+    qTextEl.textContent = q.q;
+  }
+
+  const grid = document.getElementById('opts-grid');
+  grid.innerHTML = '';
+  const keys = ['A','B','C','D'];
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn fade-up';
+    btn.style.animationDelay = (i * 0.07) + 's';
+    btn.innerHTML = `<span class="opt-key">${keys[i]}</span>${opt}`;
+    btn.onclick = () => selectAns(i, btn);
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('feedback').className = 'feedback-box';
+  document.getElementById('next-btn').className = 'next-btn';
+
+  startTimer();
+  startTime = Date.now();
+}
+
+function startTimer() {
+  clearInterval(timer);
+  updateTimer();
+  timer = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (!answered) timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimer() {
+  const el = document.getElementById('timer-num');
+  const ring = document.getElementById('timer-ring');
+  el.textContent = timeLeft;
+  const offset = CIRC * (1 - timeLeft / 7);
+  ring.style.strokeDashoffset = offset;
+  if (timeLeft <= 3) {
+    ring.style.stroke = '#f87171';
+    el.style.color = '#f87171';
+  } else if (timeLeft <= 4) {
+    ring.style.stroke = '#fbbf24';
+    el.style.color = '#fbbf24';
+  } else {
+    ring.style.stroke = 'var(--accent)';
+    el.style.color = 'var(--text)';
+  }
+}
+
+function timeUp() {
+  answered = true;
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  totalTime += elapsed;
+  const q = QUESTIONS[currentQ];
+  const btns = document.querySelectorAll('.opt-btn');
+  btns.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.ans) b.classList.add('reveal');
+  });
+  showFeedback(false, true, q);
+  wrongCount++;
+  reviewData.push({ q: q.q.replace('___','___'), chosen: '(Hết giờ)', correct: q.opts[q.ans], ok: false });
+  document.getElementById('next-btn').className = 'next-btn show';
+}
+
+function selectAns(idx, btn) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timer);
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  totalTime += elapsed + (7 - timeLeft);
+
+  const q = QUESTIONS[currentQ];
+  const btns = document.querySelectorAll('.opt-btn');
+  btns.forEach(b => b.disabled = true);
+
+  const isCorrect = idx === q.ans;
+  if (isCorrect) {
+    btn.classList.add('correct');
+    btn.classList.add('pop');
+    score += Math.max(10, 7 + timeLeft * 2);
+    correctCount++;
+    reviewData.push({ q: q.q.replace('___','___'), chosen: q.opts[idx], correct: q.opts[q.ans], ok: true });
+  } else {
+    btn.classList.add('wrong');
+    btn.classList.add('shake');
+    btns[q.ans].classList.add('reveal');
+    wrongCount++;
+    reviewData.push({ q: q.q.replace('___','___'), chosen: q.opts[idx], correct: q.opts[q.ans], ok: false });
+  }
+
+  showFeedback(isCorrect, false, q);
+  document.getElementById('next-btn').className = 'next-btn show';
+}
+
+function showFeedback(ok, timeup, q) {
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback-box show ' + (ok ? 'ok' : 'no');
+  if (timeup) {
+    fb.innerHTML = `<div class="fb-title">⏰ Hết giờ!</div>Đáp án đúng: <strong>${q.opts[q.ans]}</strong><br><br>${q.ex}`;
+  } else if (ok) {
+    fb.innerHTML = `<div class="fb-title">✓ Chính xác! +${Math.max(10, 7 + timeLeft * 2)} điểm</div>${q.ex}`;
+  } else {
+    fb.innerHTML = `<div class="fb-title">✗ Chưa đúng</div>Đáp án đúng: <strong>${q.opts[q.ans]}</strong><br><br>${q.ex}`;
+  }
+}
+
+function nextQ() {
+  currentQ++;
+  if (currentQ >= QUESTIONS.length) {
+    showResult();
+  } else {
+    loadQ();
+  }
+}
+
+function showResult() {
+  showScreen('screen-result');
+  const pct = correctCount / QUESTIONS.length;
+  const offset = SCORE_CIRC * (1 - pct);
+
+  let arcColor, title;
+  if (pct >= 0.9) { arcColor = '#2d8a29'; title = '🏆 Xuất sắc! 素晴らしい！'; }
+  else if (pct >= 0.7) { arcColor = '#3a8a36'; title = '👏 Tốt lắm！よくできました！'; }
+  else if (pct >= 0.5) { arcColor = '#c28a10'; title = '💪 Cố lên! もう少し！'; }
+  else { arcColor = '#d94f4f'; title = '📚 Cần ôn thêm！頑張れ！'; }
+
+  const arc = document.getElementById('score-arc');
+  arc.style.stroke = arcColor;
+  setTimeout(() => { arc.style.strokeDashoffset = offset; }, 100);
+
+  const scoreEl = document.getElementById('score-num');
+  scoreEl.style.color = arcColor;
+  let displayed = 0;
+  const target = score;
+  const step = Math.ceil(target / 40);
+  const counter = setInterval(() => {
+    displayed = Math.min(displayed + step, target);
+    scoreEl.textContent = displayed;
+    if (displayed >= target) clearInterval(counter);
+  }, 30);
+
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-sub').style.display = 'none';
+  document.getElementById('stat-correct').textContent = correctCount;
+  document.getElementById('stat-wrong').textContent = wrongCount;
+  document.getElementById('stat-time').textContent = totalTime + 's';
+
+  const reviewEl = document.getElementById('review-list');
+  const correctItems = reviewData.filter(r => r.ok);
+  const wrongItems = reviewData.filter(r => !r.ok);
+
+  function buildAccordion(items, label, colorClass, icon) {
+    const indices = items.map(r => reviewData.indexOf(r));
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid var(--border);';
+
+    const header = document.createElement('button');
+    header.style.cssText = `width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface2);border:none;cursor:pointer;font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:500;color:var(--text);`;
+    header.innerHTML = `<span>${icon} ${label} <span style="font-size:12px;color:var(--text2);font-weight:400;margin-left:6px">${items.length} câu</span></span><span class="acc-arrow" style="font-size:12px;color:var(--text2);transition:transform 0.2s">▼</span>`;
+
+    const body = document.createElement('div');
+    body.style.cssText = 'display:none;';
+
+    header.onclick = () => {
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      header.querySelector('.acc-arrow').style.transform = open ? '' : 'rotate(180deg)';
+    };
+
+    items.forEach((r, j) => {
+      const realIdx = indices[j];
+      const row = document.createElement('div');
+      row.style.cssText = `padding:14px 18px;border-top:1px solid var(--border);background:var(--surface);`;
+      row.innerHTML = `
+        <div style="font-size:12px;color:var(--text2);margin-bottom:5px">Câu ${realIdx + 1}: ${(r.q.length > 65 ? r.q.slice(0,65)+'…' : r.q)}</div>
+        <div style="font-size:14px;font-weight:500;color:${colorClass}">${icon} ${r.chosen}</div>
+        ${!r.ok ? `<div style="font-size:12px;color:var(--text2);margin-top:4px">Đúng: <span style="color:var(--correct);font-weight:500">${r.correct}</span></div>` : ''}
+      `;
+      body.appendChild(row);
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    return section;
+  }
+
+  reviewEl.innerHTML = '';
+  const heading = document.createElement('div');
+  heading.style.cssText = 'font-size:15px;font-weight:500;color:var(--text);margin-bottom:14px;';
+  heading.textContent = '結果の確認 — Xem lại kết quả';
+  reviewEl.appendChild(heading);
+
+  if (correctItems.length > 0) reviewEl.appendChild(buildAccordion(correctItems, 'Câu trả lời đúng', 'var(--correct)', '✓'));
+  if (wrongItems.length > 0) reviewEl.appendChild(buildAccordion(wrongItems, 'Câu trả lời sai', 'var(--wrong)', '✗'));
+
+  document.getElementById('share-text').textContent =
+    `${playerName} đạt ${score} điểm · ${correctCount}/${QUESTIONS.length} câu đúng · N2文法クイズ`;
+}
+
+function replayGame() {
+  currentQ = 0; score = 0; correctCount = 0; wrongCount = 0;
+  totalTime = 0; reviewData = [];
+  showScreen('screen-quiz');
+  loadQ();
+}
+
+function replayWithName() {
+  showScreen('screen-intro');
+}
+</script>
+</body>
+</html>
